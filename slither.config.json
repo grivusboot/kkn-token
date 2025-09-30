@@ -1,7 +1,8 @@
 {
-  "detectors_to_run": "all",
-  "filter_paths": "lib|node_modules|out|cache",
+  "filter_paths": "lib|node_modules|out|cache|broadcast",
+  "solc-remaps": [],
   "exclude": {
-    "naming-convention": "style"
+    "naming-convention": "style",
+    "solc-version": "info"
   }
 }
