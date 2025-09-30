@@ -2,7 +2,6 @@
 
 ![CI](https://github.com/grivusboot/kkn-token/actions/workflows/ci.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-![CI](https://github.com/grivusboot/kkn-token/actions/workflows/ci.yml/badge.svg)
 ![Slither](https://github.com/grivusboot/kkn-token/actions/workflows/slither.yml/badge.svg)
 
 
