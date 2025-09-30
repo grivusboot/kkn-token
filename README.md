@@ -4,8 +4,7 @@
 ![Slither](https://github.com/grivusboot/kkn-token/actions/workflows/slither.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-
-**Status:** educational / unaudited. Test thoroughly on **BSC Testnet** before any mainnet deployment.  
+**Status:** educational / unaudited. Test thoroughly on **BSC Testnet** before any mainnet deployment.
 
 ---
 
@@ -33,23 +32,7 @@
 ---
 
 ## 🚀 Deployment
-- **Compiler:** Solidity `0.8.20`
-
-## 🔍 Static Analysis (Slither)
-
-Run locally:
-```bash
-# 1) Install slither (requires Python 3)
-python3 -m pip install --upgrade pip
-pip install slither-analyzer
-
-# 2) (Optional) Pin solc to 0.8.20 if needed
-# pip install solc-select
-# solc-select install 0.8.20
-# solc-select use 0.8.20
-
-# 3) Run
-slither . --config-file slither.config.json
+- **Compiler:** Solidity `0.8.20`  
 - **Optimizer:** enabled, runs = `200`  
 - **Constructor args:**  
   ```solidity
