@@ -1,0 +1,7 @@
+{
+  "detectors_to_run": "all",
+  "filter_paths": "lib|node_modules|out|cache",
+  "exclude": {
+    "naming-convention": "style"
+  }
+}
