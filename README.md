@@ -1,33 +1,38 @@
 # KidKoin (KKN) — BEP-20 Token
 
-**Status:** educational / unaudited. Test on BSC Testnet first.
+![CI](https://github.com/grivusboot/kkn-token/actions/workflows/ci.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-## Summary
-- **Fees (hard-cap):** up to 4% total (bps: 400). Default: 2% split 0.8/0.8/0.4 (charity/treasury/rewards).
-- **Guards:** trading gate, anti-snipe window, 1 tx/block (optional), max tx & max wallet (configurable).
-- **No mint/burn**, no external calls in transfer; balances conserved.
+**Status:** educational / unaudited. Test thoroughly on **BSC Testnet** before any mainnet deployment.  
 
-## Governance & Risks
-- Owner can **pause** (owner bypass), set **exemptions/limits**, change **fee wallets**.
-- Plan: after stabilization we will **{timelock/renounce ownership}**.
-- This is a **centralization risk**. Users should understand these controls before buying.
+---
 
-## Deployment
-- **Compiler:** Solidity `0.8.20`
-- **Optimizer:** enabled, runs 200 (example)
-- **Constructor args:** `initialSupply, charity, treasury, rewards`
-- **Chain:** BSC (testnet/mainnet)
-- **Deployer:** `0x...`
-- **Token address:** `0x...` (after deployment)
-- **Block:** `#...`
+## 📖 Summary
+- **Fees (hard-cap):** up to 4% total (bps: 400).  
+  Default: 2% split → **0.8% charity / 0.8% treasury / 0.4% rewards**.  
+- **Guards & protections:**  
+  - Trading gate (must enable before transfers)  
+  - Anti-snipe window (only exempt addresses can trade during launch window)  
+  - Transfer delay: 1 tx / block / address (optional)  
+  - Max transaction & max wallet limits (configurable, default 2%)  
+- **No mint/burn**, no external calls inside `_transfer`; balances are conserved.
 
-## Verification
-1. Verify on BscScan with:
-   - Solidity `0.8.20`, optimizer settings identical
-   - Paste `KKNToken.sol` and constructor args
-2. Optionally submit to **Sourcify**.
+---
 
-## Build & Test (Foundry)
-```bash
-forge build
-forge test -vv
+## ⚠️ Governance & Risks
+- **Owner privileges:**  
+  - Can **pause** transfers (owner bypass remains active).  
+  - Can set/change **exemptions, limits, fee wallets**.  
+- **Planned governance:**  
+  After stabilization, ownership will be transitioned to **timelock** or **renounced**.  
+- **Centralization risk:**  
+  Users must be aware that contract control is centralized until ownership is renounced or locked.
+
+---
+
+## 🚀 Deployment
+- **Compiler:** Solidity `0.8.20`  
+- **Optimizer:** enabled, runs = `200`  
+- **Constructor args:**  
+  ```solidity
+  initialSupply, charityAddress, treasuryAddress, rewardsAddress
