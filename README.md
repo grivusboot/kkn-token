@@ -1,8 +1,8 @@
 # KidKoin (KKN) — BEP-20 Token
 
 ![CI](https://github.com/grivusboot/kkn-token/actions/workflows/ci.yml/badge.svg)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Slither](https://github.com/grivusboot/kkn-token/actions/workflows/slither.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 
 **Status:** educational / unaudited. Test thoroughly on **BSC Testnet** before any mainnet deployment.  
