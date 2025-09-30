@@ -1,6 +1,17 @@
-# Remix compiler artifacts
-**/artifacts/
-**/artifacts/**
+# -----------------------------
+# Solidity / Foundry / Hardhat
+# -----------------------------
+
+# Build artifacts
+out/
+cache/
+broadcast/
+artifacts/
+artifacts/**
+
+# Dependencies
+lib/
+node_modules/
 
 # Remix plugin state folders
 deps/
@@ -10,6 +21,20 @@ states/
 *.dbg.json
 *.tsbuildinfo
 
-# Optional
+# -----------------------------
+# Env / Secrets
+# -----------------------------
 .env
-.env.local
+.env.*
+!.env.example   # keep template for docs
+
+# -----------------------------
+# OS / Editor junk
+# -----------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+.vscode/
+.idea/
