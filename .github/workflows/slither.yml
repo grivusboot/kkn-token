@@ -1,0 +1,48 @@
+name: Slither
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install Foundry (for consistent solc setup; optional but handy if you also run tests)
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      # Install system deps for slither
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+
+      # Install slither
+      - name: Install Slither
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install slither-analyzer
+
+      # (Optional) Pin solc via solc-select if you want exactly 0.8.20 system-wide
+      # - name: Install solc-select
+      #   run: |
+      #     pip install solc-select
+      #     solc-select install 0.8.20
+      #     solc-select use 0.8.20
+
+      # Run slither with config; save SARIF report as artifact
+      - name: Run Slither
+        run: |
+          mkdir -p reports
+          slither . --config-file slither.config.json --sarif -o reports/slither.sarif || true
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slither-report
+          path: reports/slither.sarif
