@@ -255,59 +255,83 @@ contract KKNToken {
     // ---------- Transfer + fees + guards ----------
     function _transfer(address from, address to, uint256 value) internal {
         require(to != address(0), "KKN: to zero");
-        // When paused, only the owner can move tokens (owner bypass)
+
+        // Allow all if paused=false or owner is sender
         require(!guard.paused || msg.sender == owner, "KKN: paused");
 
-        // Before trading is enabled: only owner / exempt addresses may transfer
+        // ---------- Trading enable / anti-snipe ----------
+        // Skip anti-snipe checks for known router contracts and smart contracts
+        bool fromIsContract;
+        bool toIsContract;
+        assembly {
+            fromIsContract := gt(extcodesize(from), 0)
+            toIsContract   := gt(extcodesize(to), 0)
+        }
+
+        // Before trading is enabled, only owner/exempt can transfer
         if (!guard.tradingEnabled) {
-            require(priv.feeExempt[from] || priv.feeExempt[to] || from == owner, "KKN: trading not enabled");
+            require(
+                priv.feeExempt[from] || priv.feeExempt[to] || from == owner,
+                "KKN: trading not enabled"
+            );
         } else {
-            // During anti-snipe window: only exempt addresses may transfer
-            if (block.number <= uint256(guard.launchBlock) + uint256(guard.antiSnipeBlocks)) {
-                require(priv.feeExempt[from] || priv.feeExempt[to], "KKN: anti-snipe window");
+            // During anti-snipe window: only exempt addresses may transfer (skip for DEX/router contracts)
+            if (
+                !fromIsContract && !toIsContract &&
+                block.number <= uint256(guard.launchBlock) + uint256(guard.antiSnipeBlocks)
+            ) {
+                require(
+                    priv.feeExempt[from] || priv.feeExempt[to],
+                    "KKN: anti-snipe window"
+                );
             }
         }
 
-        // Transfer delay (1 tx / block / address), ignored for exempt addresses
-        if (guard.transferDelayEnabled && !(priv.feeExempt[from] || priv.feeExempt[to])) {
+        // ---------- Transfer delay (optional) ----------
+        if (
+            guard.transferDelayEnabled &&
+            !(priv.feeExempt[from] || priv.feeExempt[to]) &&
+            !fromIsContract && !toIsContract
+        ) {
             require(guard.lastTransferBlock[from] < block.number, "KKN: only 1 tx per block");
             guard.lastTransferBlock[from] = block.number;
         }
 
+        // ---------- Balances and limits ----------
         uint256 fromBal = balanceOf[from];
         require(fromBal >= value, "KKN: balance");
 
-        // Per-transaction limit
         if (limits.maxTxAmount > 0 && !(limits.txLimitExempt[from] || limits.txLimitExempt[to])) {
             require(value <= limits.maxTxAmount, "KKN: > maxTx");
         }
 
-        // Fees
+        // ---------- Fee logic ----------
         bool takeFee = !(priv.feeExempt[from] || priv.feeExempt[to]);
         uint256 feeTotal = 0;
         if (takeFee && _fees.total > 0) {
-            feeTotal = (value * _fees.total) / BPS_DENOM; // basis points
+            feeTotal = (value * _fees.total) / BPS_DENOM;
         }
 
         uint256 sendAmount = value - feeTotal;
 
-        // Max wallet (post-fee)
+        // ---------- Max wallet (after-fee check) ----------
         if (limits.maxWalletAmount > 0 && !limits.maxWalletExempt[to]) {
             require(balanceOf[to] + sendAmount <= limits.maxWalletAmount, "KKN: > maxWallet");
         }
 
-        // Move balances
+        // ---------- Move balances ----------
         unchecked {
             balanceOf[from] = fromBal - value;
             balanceOf[to] += sendAmount;
         }
         emit Transfer(from, to, sendAmount);
 
-        // Distribute the fee — split out to avoid "stack too deep"
+        // ---------- Fee distribution ----------
         if (feeTotal != 0) {
             _distributeFees(from, feeTotal);
         }
     }
+
 
     // ---------- Fee distribution (separated to resolve "stack too deep") ----------
     function _distributeFees(address from, uint256 feeTotal) private {
