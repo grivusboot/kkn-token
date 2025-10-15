@@ -10,6 +10,22 @@ contract KKNToken {
     // ---------- Constants ----------
     uint256 private constant BPS_DENOM = 10_000; // 100.00% in basis points
 
+    // ---------- Custom Errors ----------
+    error NotOwner();
+    error ZeroAddress();
+    error AlreadyEnabled();
+    error TradingNotEnabled();
+    error ContractPaused();
+    error ToZero();
+    error BalanceTooLow();
+    error AllowanceTooLow();
+    error MaxTxExceeded();
+    error MaxWalletExceeded();
+    error TotalFeeTooHigh();
+    error FeeSplitMismatch();
+    error AntiSnipeWindow();
+    error OneTxPerBlock();
+
     // ---------- Structs ----------
     struct FeeConfig {
         uint16 total;    // total fee (bps) — e.g., 200 = 2.00%
@@ -77,7 +93,7 @@ contract KKNToken {
     event LimitExemptionsUpdated(address indexed account, bool txLimitExempt, bool maxWalletExempt);
 
     // ---------- Modifiers ----------
-    modifier onlyOwner() { require(msg.sender == owner, "KKN: not owner"); _; }
+    modifier onlyOwner() { if (msg.sender != owner) revert NotOwner(); _; }
 
     // ---------- Metadata Getters (view) ----------
     function name() public view returns (string memory) { return _name; }
@@ -101,7 +117,7 @@ contract KKNToken {
         address treasury_,
         address rewards_
     ) {
-        require(charity_  != address(0) && treasury_ != address(0) && rewards_ != address(0), "KKN: zero addr");
+        if (charity_ == address(0) || treasury_ == address(0) || rewards_ == address(0)) revert ZeroAddress();
 
         owner = msg.sender;
         emit OwnershipTransferred(address(0), owner);
@@ -133,21 +149,21 @@ contract KKNToken {
         limits.maxWalletAmount = (totalSupply * 200) / BPS_DENOM; // 2%
 
         // Limit exemptions
-        limits.txLimitExempt[owner] = true;
+        limits.txLimitExempt[owner]    = true;
         limits.txLimitExempt[charity_] = true;
         limits.txLimitExempt[treasury_] = true;
-        limits.txLimitExempt[rewards_] = true;
+        limits.txLimitExempt[rewards_]  = true;
 
-        limits.maxWalletExempt[owner] = true;
+        limits.maxWalletExempt[owner]    = true;
         limits.maxWalletExempt[charity_] = true;
         limits.maxWalletExempt[treasury_] = true;
-        limits.maxWalletExempt[rewards_] = true;
-        limits.maxWalletExempt[address(0)] = true;
+        limits.maxWalletExempt[rewards_]  = true;
+        // (address(0)) excluderea e inutilă deoarece nu se poate transfera către zero; am eliminat-o.
     }
 
     // ---------- Ownership & Pause ----------
     function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "KKN: zero owner");
+        if (newOwner == address(0)) revert ZeroAddress();
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
         // grant standard exemptions to new owner
@@ -169,7 +185,7 @@ contract KKNToken {
     // ---------- Trading control ----------
     /// @dev Enables trading and sets the anti-snipe window (number of blocks after launch).
     function enableTrading(uint256 antiSnipeBlocks_) external onlyOwner {
-        require(!guard.tradingEnabled, "KKN: already enabled");
+        if (guard.tradingEnabled) revert AlreadyEnabled();
         guard.tradingEnabled = true;
         guard.launchBlock = uint64(block.number);
         guard.antiSnipeBlocks = uint64(antiSnipeBlocks_);
@@ -184,14 +200,14 @@ contract KKNToken {
     // ---------- Fees ----------
     /// @dev Hard-cap 4% (400 bps). The sum of the split must equal the total.
     function setFeeSplit(uint16 totalBps, uint16 charityBps, uint16 treasuryBps, uint16 rewardsBps) external onlyOwner {
-        require(totalBps <= 400, "KKN: total fee too high");
-        require(uint256(charityBps) + treasuryBps + rewardsBps == totalBps, "KKN: split mismatch");
+        if (totalBps > 400) revert TotalFeeTooHigh();
+        if (uint256(charityBps) + treasuryBps + rewardsBps != totalBps) revert FeeSplitMismatch();
         _fees = FeeConfig({ total: totalBps, charity: charityBps, treasury: treasuryBps, rewards: rewardsBps });
         emit FeeSplitUpdated(totalBps, charityBps, treasuryBps, rewardsBps);
     }
 
     function setFeeWallets(address charity, address treasury, address rewards) external onlyOwner {
-        require(charity != address(0) && treasury != address(0) && rewards != address(0), "KKN: zero addr");
+        if (charity == address(0) || treasury == address(0) || rewards == address(0)) revert ZeroAddress();
         _wallets = Wallets({ charity: charity, treasury: treasury, rewards: rewards });
 
         // standard exemptions
@@ -243,7 +259,7 @@ contract KKNToken {
 
     function transferFrom(address from, address to, uint256 value) external returns (bool) {
         uint256 allowed = allowance[from][msg.sender];
-        require(allowed >= value, "KKN: allowance");
+        if (allowed < value) revert AllowanceTooLow();
         if (allowed != type(uint256).max) {
             allowance[from][msg.sender] = allowed - value;
             emit Approval(from, msg.sender, allowance[from][msg.sender]);
@@ -254,10 +270,10 @@ contract KKNToken {
 
     // ---------- Transfer + fees + guards ----------
     function _transfer(address from, address to, uint256 value) internal {
-        require(to != address(0), "KKN: to zero");
+        if (to == address(0)) revert ToZero();
 
-        // Allow all if paused=false or owner is sender
-        require(!guard.paused || msg.sender == owner, "KKN: paused");
+        // Allow all if paused=false or owner is sender (menține comportamentul tău original)
+        if (guard.paused && msg.sender != owner) revert ContractPaused();
 
         // ---------- Trading enable / anti-snipe ----------
         // Skip anti-snipe checks for known router contracts and smart contracts
@@ -270,20 +286,14 @@ contract KKNToken {
 
         // Before trading is enabled, only owner/exempt can transfer
         if (!guard.tradingEnabled) {
-            require(
-                priv.feeExempt[from] || priv.feeExempt[to] || from == owner,
-                "KKN: trading not enabled"
-            );
+            if (!(priv.feeExempt[from] || priv.feeExempt[to] || from == owner)) revert TradingNotEnabled();
         } else {
-            // During anti-snipe window: only exempt addresses may transfer (skip for DEX/router contracts)
+            // During anti-snipe window: only exempt addresses may transfer (skip for contracts)
             if (
                 !fromIsContract && !toIsContract &&
                 block.number <= uint256(guard.launchBlock) + uint256(guard.antiSnipeBlocks)
             ) {
-                require(
-                    priv.feeExempt[from] || priv.feeExempt[to],
-                    "KKN: anti-snipe window"
-                );
+                if (!(priv.feeExempt[from] || priv.feeExempt[to])) revert AntiSnipeWindow();
             }
         }
 
@@ -293,16 +303,16 @@ contract KKNToken {
             !(priv.feeExempt[from] || priv.feeExempt[to]) &&
             !fromIsContract && !toIsContract
         ) {
-            require(guard.lastTransferBlock[from] < block.number, "KKN: only 1 tx per block");
+            if (guard.lastTransferBlock[from] >= block.number) revert OneTxPerBlock();
             guard.lastTransferBlock[from] = block.number;
         }
 
         // ---------- Balances and limits ----------
         uint256 fromBal = balanceOf[from];
-        require(fromBal >= value, "KKN: balance");
+        if (fromBal < value) revert BalanceTooLow();
 
         if (limits.maxTxAmount > 0 && !(limits.txLimitExempt[from] || limits.txLimitExempt[to])) {
-            require(value <= limits.maxTxAmount, "KKN: > maxTx");
+            if (value > limits.maxTxAmount) revert MaxTxExceeded();
         }
 
         // ---------- Fee logic ----------
@@ -316,7 +326,7 @@ contract KKNToken {
 
         // ---------- Max wallet (after-fee check) ----------
         if (limits.maxWalletAmount > 0 && !limits.maxWalletExempt[to]) {
-            require(balanceOf[to] + sendAmount <= limits.maxWalletAmount, "KKN: > maxWallet");
+            if (balanceOf[to] + sendAmount > limits.maxWalletAmount) revert MaxWalletExceeded();
         }
 
         // ---------- Move balances ----------
@@ -332,10 +342,10 @@ contract KKNToken {
         }
     }
 
-
     // ---------- Fee distribution (separated to resolve "stack too deep") ----------
     function _distributeFees(address from, uint256 feeTotal) private {
         uint16 t = _fees.total;
+        // assert(t > 0); // implicit, pentru că se apelează doar când feeTotal != 0
 
         // Split by shares; remainder goes to rewards to preserve sum
         uint256 feeCharity  = (feeTotal * _fees.charity)  / t;
