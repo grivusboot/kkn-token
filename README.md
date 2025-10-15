@@ -15,7 +15,8 @@
   - Trading gate (must enable before transfers)  
   - Anti-snipe window (only exempt addresses can trade during launch window)  
   - Transfer delay: 1 tx / block / address (optional)  
-  - Max transaction & max wallet limits (configurable, default 2%)  
+  - Max transaction & max wallet limits (configurable, default 2%)
+  - **Custom Errors**: migrated from string-based `require(...)` to `revert ErrorName()` for gas & code efficiency 
 - **No mint/burn**, no external calls inside `_transfer`; balances are conserved.
 
 ---
